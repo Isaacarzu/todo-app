@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>To-Do List App</title>
+  <script src="https://unpkg.com/react@17/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@17/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+  <script src="https://unpkg.com/react-router-dom/umd/react-router-dom.min.js"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script>
+    const { BrowserRouter, Route, Routes, Link, useNavigate } = ReactRouterDOM;
+
+    // Register Component
+    function Register() {
+      const [formData, setFormData] = React.useState({
+        username: '',
+        email: '',
+        password: ''
+      });
+      const navigate = useNavigate();
+
+      const onChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+      const onSubmit = async e => {
+        e.preventDefault();
+        try {
+          await axios.post('http://localhost:5000/api/auth/register', formData);
+          navigate('/login');
+        } catch (err) {
+          console.log(err.response.data.message);
+        }
+      };
+
+      return (
+        <form onSubmit={onSubmit}>
+          <input type="text" name="username" value={formData.username} onChange={onChange} placeholder="Username" required />
+          <input type="email" name="email" value={formData.email} onChange={onChange} placeholder="Email" required />
+          <input type="password" name="password" value={formData.password} onChange={onChange} placeholder="Password" required />
+          <button type="submit">Register</button>
+        </form>
+      );
+    }
+
+    // Login Component
+    function Login() {
+      const [formData, setFormData] = React.useState({
+        email: '',
+        password: ''
+      });
+      const navigate = useNavigate();
+
+      const onChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
+
+      const onSubmit = async e => {
+        e.preventDefault();
+        try {
+          const res = await axios.post('http://localhost:5000/api/auth/login', formData);
+          localStorage.setItem('token', res.data.token);
+          navigate('/todos');
+        } catch (err) {
+          console.log(err.response.data.message);
+        }
+      };
+
+      return (
+        <form onSubmit={onSubmit}>
+          <input type="email" name="email" value={formData.email} onChange={onChange} placeholder="Email" required />
+          <input type="password" name="password" value={formData.password} onChange={onChange} placeholder="Password" required />
+          <button type="submit">Login</button>
+        </form>
+      );
+    }
+
+    // TodoList Component
+    function TodoList() {
+      const [todos, setTodos] = React.useState([]);
+      const [task, setTask] = React.useState('');
+
+      React.useEffect(() => {
+        const fetchTodos = async () => {
+          const token = localStorage.getItem('token');
+          const res = await axios.get('http://localhost:5000/api/todo', {
+            headers: {
+              'x-auth-token': token
+            }
+          });
+          setTodos(res.data);
+        };
+        fetchTodos();
+      }, []);
+
+      const addTodo = async e => {
+        e.preventDefault();
+        const token = localStorage.getItem('token');
+        const res = await axios.post('http://localhost:5000/api/todo', { task }, {
+          headers: {
+            'x-auth-token': token
+          }
+        });
+        setTodos([...todos, res.data]);
+        setTask('');
+      };
+
+      const toggleComplete = async id => {
+        const token = localStorage.getItem('token');
+        const res = await axios.put(`http://localhost:5000/api/todo/${id}`, {}, {
+          headers: {
+            'x-auth-token': token
+          }
+        });
+        setTodos(todos.map(todo => (todo._id === id ? res.data : todo)));
+      };
+
+      return (
+        <div>
+          <form onSubmit={addTodo}>
+            <input type="text" value={task} onChange={e => setTask(e.target.value)} placeholder="New Task" required />
+            <button type="submit">Add Task</button>
+          </form>
+          <ul>
+            {todos.map(todo => (
+              <li key={todo._id} onClick={() => toggleComplete(todo._id)}>
+                {todo.task} {todo.completed ? '✔️' : '❌'}
+              </li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+
+    // Main App Component
+    function App() {
+      return (
+        <BrowserRouter>
+          <nav>
+            <Link to="/register">Register</Link> | <Link to="/login">Login</Link> | <Link to="/todos">Todo List</Link>
+          </nav>
+          <Routes>
+            <Route path="/register" element={<Register />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/todos" element={<TodoList />} />
+          </Routes>
+        </BrowserRouter>
+      );
+    }
+
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
+</body>
+</html>
