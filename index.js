@@ -1,13 +1,25 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import './style.css';
-import App from './App';
+const express = require('express');
+const mongoose = require('mongoose');
+const dotenv = require('dotenv').config();
+const cors = require('cors');
+
+const app = express();
+
+app.use(express.json());
+
+const PORT = process.env.PORT || 5500;
+
+app.use(cors());
+
+const TodoItemRoute = require('./routes/todoItems');
+
+mongoose.connect(process.env.DB_CONNECT)
+.then( ()=> console.log("Database connected"))
+.catch(err => console.log(err))
 
 
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+app.use('/', TodoItemRoute);
 
+
+
+app.listen(PORT, ()=> console.log("Server connected") );
